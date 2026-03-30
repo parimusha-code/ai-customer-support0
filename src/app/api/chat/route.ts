@@ -10,10 +10,19 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
-    const { message } = await req.json();
+    const { message, sessionId } = await req.json();
 
     if (!message) {
       return NextResponse.json({ error: "No message provided" }, { status: 400 });
+    }
+
+    // 0. Save user message if sessionId exists
+    if (sessionId) {
+      await supabase.from("chat_messages").insert({
+        session_id: sessionId,
+        role: "user",
+        content: message
+      });
     }
 
     // 1. Generate embedding for the user message
@@ -56,8 +65,19 @@ ${context}`,
       stream: false, // Simple non-streamed for now, can upgrade later
     });
 
+    const reply = response.choices[0].message.content;
+
+    // 4. Save bot message if sessionId exists
+    if (sessionId) {
+      await supabase.from("chat_messages").insert({
+        session_id: sessionId,
+        role: "bot",
+        content: reply
+      });
+    }
+
     return NextResponse.json({
-      reply: response.choices[0].message.content,
+      reply: reply,
       sections: sections,
     });
   } catch (error: any) {

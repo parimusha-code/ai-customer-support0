@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const topic = formData.get("topic") as string || "General";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -27,10 +28,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to extract text" }, { status: 400 });
     }
 
-    // 1. Create document record
+    // 1. Create document record with topic
     const { data: doc, error: docError } = await supabase
       .from("documents")
-      .insert({ name: file.name })
+      .insert({ 
+        name: file.name,
+        topic: topic 
+      })
       .select()
       .single();
 
