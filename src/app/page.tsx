@@ -12,6 +12,7 @@ export default function Home() {
   const [libraryRefresh, setLibraryRefresh] = useState(0);
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,13 +22,15 @@ export default function Home() {
   const fetchDocuments = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const res = await fetch("/api/documents");
-      if (!res.ok) throw new Error("Failed to fetch documents");
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const data = await res.json();
       console.log("Documents fetched from API:", data);
       setDocuments(Array.isArray(data) ? data : []);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching documents:", err);
+      setError(err.message || "Failed to load library");
       setDocuments([]);
     } finally {
       setIsLoading(false);
@@ -132,6 +135,13 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => fetchDocuments()}
+                      className="p-1.5 hover:bg-slate-800 rounded-md text-slate-500 hover:text-purple-400 transition-colors"
+                      title="Refresh Library"
+                    >
+                      <Loader2 size={14} className={isLoading ? "animate-spin" : ""} />
+                    </button>
                     <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded-md border border-slate-700 font-bold">
                       {documents.length} Units
                     </span>
@@ -144,6 +154,17 @@ export default function Home() {
                       <div className="flex flex-col items-center justify-center py-12 space-y-3 opacity-50">
                         <Loader2 className="animate-spin text-purple-500" size={24} />
                         <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Accessing Data...</p>
+                      </div>
+                    ) : error ? (
+                      <div className="flex flex-col items-center justify-center py-8 space-y-2 bg-red-500/5 rounded-2xl border border-red-500/20">
+                        <p className="text-[10px] uppercase tracking-widest text-red-400 font-bold">Sync Error</p>
+                        <p className="text-[9px] text-red-500/60 font-medium">{error}</p>
+                        <button 
+                          onClick={() => fetchDocuments()}
+                          className="text-[9px] text-red-400 underline hover:text-red-300"
+                        >
+                          Try Again
+                        </button>
                       </div>
                     ) : documents.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 space-y-3 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800">
