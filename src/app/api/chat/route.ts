@@ -57,9 +57,11 @@ export async function POST(req: NextRequest) {
 
     console.log(`Knowledge Base Response: Found ${sections?.length || 0} relative segments.`);
     if (sections && sections.length > 0) {
-      console.log("Most relative segment score:", sections[0].similarity);
+      console.log("Top 3 Similarity Scores:", sections.slice(0, 3).map((s: any) => s.similarity.toFixed(4)).join(", "));
     }
-    const context = sections?.map((s: any) => s.content).join("\n\n") || "No relevant context found.";
+    const context = (sections && sections.length > 0)
+      ? sections.map((s: any) => s.content).join("\n\n")
+      : "No relevant context found.";
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
     // 3. Generate completion with OpenRouter, restricted to context
     console.log("Requesting completion from OpenRouter using meta-llama/llama-3-8b-instruct:free...");
     const response = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-001",
+      model: "google/gemini-2.0-flash-001", // Using the stable Gemini 2.0 path
       messages: [
         {
           role: "system",
