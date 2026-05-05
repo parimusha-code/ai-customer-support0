@@ -1,4 +1,5 @@
 "use client";
+// Final Deployment Sync: 2026-05-05
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
