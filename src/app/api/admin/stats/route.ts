@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   try {
     // 1. Total Documents
-    const { count: docCount, error: docError } = await supabase
+    const { count: docCount, error: docError } = await supabaseAdmin
       .from("documents")
       .select("*", { count: 'exact', head: true });
 
     if (docError) throw docError;
 
     // 2. Total Sessions
-    const { count: sessionCount, error: sessionError } = await supabase
+    const { count: sessionCount, error: sessionError } = await supabaseAdmin
       .from("chat_sessions")
       .select("*", { count: 'exact', head: true });
 
     if (sessionError) throw sessionError;
 
     // 3. Recently Uploaded
-    const { data: recentDocs, error: recentError } = await supabase
+    const { data: recentDocs, error: recentError } = await supabaseAdmin
       .from("documents")
       .select("name, topic, created_at")
       .order("created_at", { ascending: false })

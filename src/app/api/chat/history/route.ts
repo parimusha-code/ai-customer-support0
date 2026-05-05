@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await supabaseAdmin
       .from("chat_sessions")
       .select("*")
       .order("created_at", { ascending: false });
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { title } = await req.json();
-    const { data: session, error } = await supabase
+    const { data: session, error } = await supabaseAdmin
       .from("chat_sessions")
       .insert({ title: title || "New Chat" })
       .select()
@@ -42,7 +42,7 @@ export async function DELETE(req: NextRequest) {
 
     if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("chat_sessions")
       .delete()
       .eq("id", id);

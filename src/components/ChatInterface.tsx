@@ -98,15 +98,23 @@ export default function ChatInterface() {
     let sessionId = currentSessionId;
     if (!sessionId) {
       // Auto-create session on first message
-      const res = await fetch("/api/chat/history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: input.trim().substring(0, 30) + "..." }),
-      });
-      const newSession = await res.json();
-      sessionId = newSession.id;
-      setCurrentSessionId(sessionId);
-      setSessions([newSession, ...sessions]);
+      try {
+        const res = await fetch("/api/chat/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: input.trim().substring(0, 30) + "..." }),
+        });
+        
+        if (!res.ok) throw new Error("Failed to create chat session");
+        
+        const newSession = await res.json();
+        sessionId = newSession.id;
+        setCurrentSessionId(sessionId);
+        setSessions([newSession, ...sessions]);
+      } catch (sessionErr) {
+        console.error("Session creation error:", sessionErr);
+        // We continue even if session creation fails, using undefined sessionId
+      }
     }
 
     const userMessage = input.trim();
@@ -126,10 +134,10 @@ export default function ChatInterface() {
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "bot", content: data.reply }]);
     } catch (err: any) {
-      console.error(err);
+      console.error("CHAT SUBMIT ERROR:", err);
       setMessages((prev) => [
         ...prev,
-        { role: "bot", content: `Sorry, I'm having trouble connecting right now. ${err.message || ""}` },
+        { role: "bot", content: `System Error: ${err.message || "I'm having trouble processing that request. Please try again."}` },
       ]);
     } finally {
       setIsLoading(false);

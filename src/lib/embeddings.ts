@@ -9,13 +9,20 @@ const openai = new OpenAI({
  * Generates an embedding for a given text using OpenAI (via OpenRouter).
  * Default model: text-embedding-3-small (1536 dimensions)
  */
-export async function getEmbedding(text: string) {
-  const response = await openai.embeddings.create({
-    model: 'openai/text-embedding-3-small',
-    input: text.replace(/\n/g, ' '),
-  });
-
-  return response.data[0].embedding;
+export async function getEmbedding(text: string, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await openai.embeddings.create({
+        model: 'openai/text-embedding-3-small',
+        input: text.replace(/\n/g, ' '),
+      });
+      return response.data[0].embedding;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.warn(`Embedding failed, retrying (${i + 1}/${retries})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
 }
 
 /**

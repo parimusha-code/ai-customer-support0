@@ -18,15 +18,15 @@ export async function POST(req: NextRequest) {
 
     let text = "";
     if (file.type === "application/pdf") {
-      console.log("Parsing PDF with pdf-parse...");
+      console.log("Parsing PDF document...");
       try {
-        const pdfModule = await import("pdf-parse/lib/pdf-parse.js");
-        const pdfParse = pdfModule.default || pdfModule;
+        // More robust import for next.js
+        const pdfParse = (await import("pdf-parse")).default || (await import("pdf-parse"));
         const data = await pdfParse(buffer);
         text = data.text;
       } catch (pdfErr: any) {
-        console.error("PDF Parsing Error:", pdfErr);
-        throw new Error(`PDF Engine Error: ${pdfErr.message || "Failed to parse document"}`);
+        console.error("PDF Parsing Error detail:", pdfErr);
+        throw new Error(`PDF Parsing failed: ${pdfErr.message || "Ensure the file is a valid PDF."}`);
       }
     } else {
       text = buffer.toString("utf-8");

@@ -6,6 +6,10 @@ import OpenAI from "openai";
 const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "http://localhost:3000", // Required by some OpenRouter models
+    "X-Title": "AI Customer Support",
+  }
 });
 
 export async function POST(req: NextRequest) {
@@ -86,7 +90,16 @@ ${context}`,
       stream: false,
     });
 
+    if (!response.choices || response.choices.length === 0) {
+      throw new Error("No response choices returned from AI service.");
+    }
+
     const reply = response.choices[0].message.content;
+    
+    if (!reply) {
+      console.warn("AI returned empty reply content.");
+    }
+    
     console.log("Bot reply generated successfully.");
 
     // 4. Save bot message if sessionId exists
