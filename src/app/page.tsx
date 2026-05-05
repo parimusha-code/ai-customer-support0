@@ -3,10 +3,17 @@
 import { useState } from "react";
 import FileUpload from "@/components/FileUpload";
 import ChatInterface from "@/components/ChatInterface";
+import DocumentLibrary from "@/components/DocumentLibrary";
 import { motion } from "framer-motion";
 
 export default function Home() {
   const [docId, setDocId] = useState<string | null>(null);
+  const [libraryRefresh, setLibraryRefresh] = useState(0);
+
+  const handleUploadComplete = (id: string) => {
+    setDocId(id);
+    setLibraryRefresh(prev => prev + 1);
+  };
 
   return (
     <main className="min-h-screen relative overflow-hidden flex flex-col items-center py-12 px-4 bg-slate-950">
@@ -63,7 +70,11 @@ export default function Home() {
               <p className="text-slate-400 text-sm mb-6">
                 Drag and drop your company docs or guides here. We'll chunk and embed them for lightning-fast retrieval.
               </p>
-              <FileUpload onUploadComplete={(id) => setDocId(id)} />
+              <FileUpload onUploadComplete={handleUploadComplete} />
+            </div>
+
+            <div className="glass-card p-8 rounded-3xl border border-slate-800/50">
+              <DocumentLibrary refreshTrigger={libraryRefresh} />
             </div>
             
             <div className="glass-card p-6 rounded-2xl flex items-center space-x-4 border-l-4 border-l-purple-500">

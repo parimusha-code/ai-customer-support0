@@ -1,3 +1,8 @@
+declare module 'pdf-parse/lib/pdf-parse.js' {
+  import pdf from 'pdf-parse';
+  export = pdf;
+}
+
 declare module 'pdf-parse' {
   interface PDFData {
     numpages: number;

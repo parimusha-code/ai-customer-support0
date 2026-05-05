@@ -125,10 +125,11 @@ export default function ChatInterface() {
 
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "bot", content: data.reply }]);
-    } catch (err) {
+    } catch (err: any) {
+      console.error(err);
       setMessages((prev) => [
         ...prev,
-        { role: "bot", content: "Sorry, I'm having trouble connecting right now." },
+        { role: "bot", content: `Sorry, I'm having trouble connecting right now. ${err.message || ""}` },
       ]);
     } finally {
       setIsLoading(false);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { chunkText, getEmbedding } from "@/lib/embeddings";
 import pdf from "pdf-parse";
 
@@ -18,18 +18,30 @@ export async function POST(req: NextRequest) {
 
     let text = "";
     if (file.type === "application/pdf") {
-      const data = await pdf(buffer);
-      text = data.text;
+      console.log("Parsing PDF with pdf-parse...");
+      try {
+        const pdfModule = await import("pdf-parse/lib/pdf-parse.js");
+        const pdfParse = pdfModule.default || pdfModule;
+        const data = await pdfParse(buffer);
+        text = data.text;
+      } catch (pdfErr: any) {
+        console.error("PDF Parsing Error:", pdfErr);
+        throw new Error(`PDF Engine Error: ${pdfErr.message || "Failed to parse document"}`);
+      }
     } else {
       text = buffer.toString("utf-8");
     }
 
     if (!text) {
-      return NextResponse.json({ error: "Failed to extract text" }, { status: 400 });
+      console.error("Text extraction failed or returned empty content.");
+      return NextResponse.json({ error: "Failed to extract text from the file." }, { status: 400 });
     }
 
+    console.log(`Document text extracted successfully (${text.length} characters).`);
+
     // 1. Create document record with topic
-    const { data: doc, error: docError } = await supabase
+    console.log("Inserting document metadata into Supabase...");
+    const { data: doc, error: docError } = await supabaseAdmin
       .from("documents")
       .insert({ 
         name: file.name,
@@ -38,31 +50,55 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (docError) throw docError;
+    if (docError) {
+      console.error("Supabase Document Insertion Error:", docError);
+      throw new Error(`Failed to create document record: ${docError.message}`);
+    }
+
+    console.log(`Document record created with ID: ${doc.id}`);
 
     // 2. Chunk text and generate embeddings
+    console.log("Chunking text...");
     const chunks = chunkText(text);
+    console.log(`Text split into ${chunks.length} chunks.`);
+
     const sections = await Promise.all(
-      chunks.map(async (chunk) => {
-        const embedding = await getEmbedding(chunk);
-        return {
-          document_id: doc.id,
-          content: chunk,
-          embedding: embedding,
-        };
+      chunks.map(async (chunk, index) => {
+        try {
+          const embedding = await getEmbedding(chunk);
+          if (embedding.length !== 1536) {
+            throw new Error(`Invalid embedding dimension: ${embedding.length} (expected 1536)`);
+          }
+          return {
+            document_id: doc.id,
+            content: chunk,
+            embedding: embedding,
+          };
+        } catch (err: any) {
+          console.error(`Error generating embedding for chunk ${index}:`, err);
+          throw err;
+        }
       })
     );
 
-    // 3. Store sections (in batches if necessary, but here simple)
-    const { error: sectionError } = await supabase
+    // 3. Store sections
+    console.log(`Inserting ${sections.length} sections into Supabase...`);
+    const { error: sectionError } = await supabaseAdmin
       .from("document_sections")
       .insert(sections);
 
-    if (sectionError) throw sectionError;
+    if (sectionError) {
+      console.error("Supabase Section Insertion Error:", sectionError);
+      throw new Error(`Failed to store document sections: ${sectionError.message}`);
+    }
 
+    console.log("Upload and processing complete!");
     return NextResponse.json({ success: true, documentId: doc.id });
   } catch (error: any) {
-    console.error("Upload error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("CRITICAL UPLOAD ERROR:", error);
+    return NextResponse.json(
+      { error: error.message || "An unexpected error occurred during upload." },
+      { status: 500 }
+    );
   }
 }

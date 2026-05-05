@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { getEmbedding } from "@/lib/embeddings";
 import OpenAI from "openai";
 
@@ -18,33 +18,54 @@ export async function POST(req: NextRequest) {
 
     // 0. Save user message if sessionId exists
     if (sessionId) {
-      await supabase.from("chat_messages").insert({
+      console.log(`Saving user message to session ${sessionId}...`);
+      const { error: msgError } = await supabaseAdmin.from("chat_messages").insert({
         session_id: sessionId,
         role: "user",
         content: message
       });
+      if (msgError) {
+        console.error("Error saving user message:", msgError);
+        // We don't throw here to allow the chat to continue even if history fails, 
+        // but it's good to know it happened.
+      }
     }
 
     // 1. Generate embedding for the user message
+    console.log("Generating query embedding...");
     const queryEmbedding = await getEmbedding(message);
 
     // 2. Search for relevant document sections in Supabase
-    const { data: sections, error: searchError } = await supabase.rpc(
+    console.log("Searching for relevant context using match_document_sections...");
+    const { data: sections, error: searchError } = await supabaseAdmin.rpc(
       "match_document_sections",
       {
         query_embedding: queryEmbedding,
-        match_threshold: 0.5,
-        match_count: 5,
+        match_threshold: 0.1, // Adjusted to a very low but safe threshold
+        match_count: 10,
       }
     );
 
-    if (searchError) throw searchError;
+    if (searchError) {
+      console.error("Supabase Search Error:", searchError);
+      throw new Error(`Knowledge base search failed: ${searchError.message}`);
+    }
 
+    console.log(`Knowledge Base Response: Found ${sections?.length || 0} relative segments.`);
+    if (sections && sections.length > 0) {
+      console.log("Most relative segment score:", sections[0].similarity);
+    }
     const context = sections?.map((s: any) => s.content).join("\n\n") || "No relevant context found.";
 
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY is not set");
+    }
+
     // 3. Generate completion with OpenRouter, restricted to context
+    console.log("Requesting completion from OpenRouter using meta-llama/llama-3-8b-instruct:free...");
     const response = await openai.chat.completions.create({
-      model: "google/gemini-2.0-pro-exp-02-05:free", // Using a free tier model as an example, update if needed
+      model: "google/gemini-2.0-flash-001",
       messages: [
         {
           role: "system",
@@ -62,14 +83,16 @@ ${context}`,
         },
         { role: "user", content: message },
       ],
-      stream: false, // Simple non-streamed for now, can upgrade later
+      stream: false,
     });
 
     const reply = response.choices[0].message.content;
+    console.log("Bot reply generated successfully.");
 
     // 4. Save bot message if sessionId exists
     if (sessionId) {
-      await supabase.from("chat_messages").insert({
+      console.log(`Saving bot message to session ${sessionId}...`);
+      await supabaseAdmin.from("chat_messages").insert({
         session_id: sessionId,
         role: "bot",
         content: reply
@@ -81,7 +104,10 @@ ${context}`,
       sections: sections,
     });
   } catch (error: any) {
-    console.error("Chat error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("CRITICAL CHAT ERROR:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error during chat." },
+      { status: 500 }
+    );
   }
 }

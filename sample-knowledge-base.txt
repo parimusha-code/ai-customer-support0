@@ -1,0 +1,13 @@
+# AI Customer Support Agent - Knowledge Base
+
+## Product: QuantumX Smart Watch
+The QuantumX Smart Watch features a 1.5-inch AMOLED display, 14-day battery life, and advanced health tracking including heart rate, SpO2, and sleep monitoring. It is water-resistant up to 50 meters (5ATM).
+
+## Shipping & Delivery
+We offer free standard shipping on all orders over $50. Standard shipping takes 3-5 business days. Express shipping is available for $15 and takes 1-2 business days.
+
+## Returns & Refunds
+You can return any product within 30 days of purchase for a full refund, provided it is in its original packaging and condition. To start a return, please visit our online portal and select 'Request Return'.
+
+## Support Contacts
+For technical support, email support@quantumx.tech or call 1-800-QX-TECH. Our support team is available 24/7.

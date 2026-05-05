@@ -13,6 +13,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
   const [fileName, setFileName] = useState<string>("");
   const [topic, setTopic] = useState<string>("General");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -20,6 +21,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
 
     setFileName(file.name);
     setStatus("uploading");
+    setErrorMessage(""); // Reset error
 
     const formData = new FormData();
     formData.append("file", file);
@@ -31,9 +33,12 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
       setStatus("success");
       onUploadComplete(data.documentId);
       
@@ -41,8 +46,9 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
         setStatus("idle");
         setFileName("");
       }, 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err.message);
       setStatus("error");
     }
   }, [onUploadComplete, topic]);
@@ -128,10 +134,15 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
             <h3 className="text-lg font-bold text-white tracking-tight">
               {status === "uploading" ? "Processing Engine..." : 
                status === "success" ? "Network Synced!" : 
+               status === "error" ? "System Failure" :
                "Drop Document"}
             </h3>
             <p className="text-slate-500 text-xs font-medium uppercase tracking-widest">
-              {fileName || "PDF or TXT required"}
+              {status === "error" ? (
+                <span className="text-red-400 normal-case font-bold">{errorMessage}</span>
+              ) : (
+                fileName || "PDF or TXT required"
+              )}
             </p>
           </div>
         </div>
