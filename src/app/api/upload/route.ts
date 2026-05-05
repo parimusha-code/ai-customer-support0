@@ -66,13 +66,16 @@ export async function POST(req: NextRequest) {
       chunks.map(async (chunk, index) => {
         try {
           const embedding = await getEmbedding(chunk);
+          if (!embedding) {
+            throw new Error("Failed to generate embedding for a text chunk.");
+          }
           if (embedding.length !== 1536) {
             throw new Error(`Invalid embedding dimension: ${embedding.length} (expected 1536)`);
           }
           return {
-            document_id: doc.id,
             content: chunk,
             embedding: embedding,
+            document_id: doc.id
           };
         } catch (err: any) {
           console.error(`Error generating embedding for chunk ${index}:`, err);
